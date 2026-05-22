@@ -1,0 +1,41 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: vietsafe
+      POSTGRES_USER: vietsafe
+      POSTGRES_PASSWORD: vietsafe
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vietsafe -d vietsafe"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  api:
+    build: .
+    environment:
+      ENVIRONMENT: development
+      DATABASE_URL: postgresql+psycopg://vietsafe:vietsafe@postgres:5432/vietsafe
+      BOOTSTRAP_TENANT_ID: demo-insurance
+      BOOTSTRAP_TENANT_NAME: Demo Insurance Tenant
+      BOOTSTRAP_API_KEY: dev_demo_key
+      API_KEY_SALT: replace-with-a-long-random-secret
+      RATE_LIMIT_PER_MINUTE: 60
+      OLLAMA_BASE_URL: http://host.docker.internal:11434
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:

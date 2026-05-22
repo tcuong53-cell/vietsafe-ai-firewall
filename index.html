@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>VietSafe AI Firewall</title>
+    <link rel="stylesheet" href="src/styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="Điều hướng chính">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true">VS</div>
+          <div>
+            <strong>VietSafe</strong>
+            <span>AI Firewall</span>
+          </div>
+        </div>
+
+        <nav class="nav-list">
+          <a class="nav-item is-active" href="#inspector">Inspector</a>
+          <a class="nav-item" href="#policy">Policy</a>
+          <a class="nav-item" href="#logs">Audit Logs</a>
+          <a class="nav-item" href="#gateway">Gateway</a>
+        </nav>
+
+        <div class="gateway-status" id="gateway">
+          <span class="status-dot"></span>
+          <div>
+            <strong id="gatewayState">Gateway auto</strong>
+            <span id="gatewayLatency">Backend khi chạy FastAPI, offline khi mở HTML</span>
+          </div>
+        </div>
+      </aside>
+
+      <main class="workspace">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">SaaS bảo mật AI cho doanh nghiệp Việt Nam</p>
+            <h1>AI Firewall Gateway</h1>
+          </div>
+          <div class="topbar-actions">
+            <button class="button secondary" id="exportLogsButton" type="button">Export logs</button>
+            <button class="button primary" id="runButton" type="button">Run inspection</button>
+          </div>
+        </header>
+
+        <section class="metrics-grid" aria-label="Chỉ số hệ thống">
+          <article class="metric-tile">
+            <span>Total inspected</span>
+            <strong id="metricTotal">0</strong>
+            <small>request trong phiên</small>
+          </article>
+          <article class="metric-tile">
+            <span>Blocked</span>
+            <strong id="metricBlocked">0</strong>
+            <small>policy hoặc risk cao</small>
+          </article>
+          <article class="metric-tile">
+            <span>Average risk</span>
+            <strong id="metricAvgRisk">0%</strong>
+            <small>điểm sau guardrail</small>
+          </article>
+          <article class="metric-tile">
+            <span>PII masked</span>
+            <strong id="metricPii">0</strong>
+            <small>email, CCCD, SĐT, STK</small>
+          </article>
+        </section>
+
+        <section class="pipeline" aria-label="Kiến trúc kiểm soát AI">
+          <div class="pipeline-step" id="stepUser">
+            <span>User</span>
+            <strong>Prompt</strong>
+          </div>
+          <div class="pipeline-line"></div>
+          <div class="pipeline-step" id="stepInput">
+            <span>Input Guard</span>
+            <strong>Scanning</strong>
+          </div>
+          <div class="pipeline-line"></div>
+          <div class="pipeline-step" id="stepCore">
+            <span>AI Core</span>
+            <strong>Adapter</strong>
+          </div>
+          <div class="pipeline-line"></div>
+          <div class="pipeline-step" id="stepOutput">
+            <span>Output Guard</span>
+            <strong>Validation</strong>
+          </div>
+          <div class="pipeline-line"></div>
+          <div class="pipeline-step" id="stepFinal">
+            <span>User</span>
+            <strong>Safe response</strong>
+          </div>
+        </section>
+
+        <div class="content-grid">
+          <section class="panel inspector-panel" id="inspector">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">Request inspector</p>
+                <h2>Kiểm tra prompt và phản hồi AI</h2>
+              </div>
+              <span class="badge" id="decisionBadge">Chưa chạy</span>
+            </div>
+
+            <div class="form-grid">
+              <label class="field">
+                <span>Ngành / vai trò</span>
+                <select id="roleSelect">
+                  <option value="insurance">Bảo hiểm - tư vấn viên</option>
+                  <option value="banking">Ngân hàng - chăm sóc khách hàng</option>
+                  <option value="education">Giáo dục - trợ giảng</option>
+                  <option value="general">Doanh nghiệp chung</option>
+                </select>
+              </label>
+
+              <label class="field">
+                <span>AI adapter</span>
+                <select id="modelSelect">
+                  <option value="mock">Mock Gateway</option>
+                  <option value="openai">OpenAIAdapter</option>
+                  <option value="claude">ClaudeAdapter</option>
+                  <option value="gemini">GeminiAdapter</option>
+                  <option value="ollama">Ollama / LocalModelAdapter</option>
+                  <option value="litellm">LiteLLM Proxy</option>
+                </select>
+              </label>
+
+              <label class="field">
+                <span>Gateway API key</span>
+                <input id="apiKeyInput" type="password" value="dev_demo_key" autocomplete="off" />
+              </label>
+            </div>
+
+            <label class="field prompt-field">
+              <span>User prompt</span>
+              <textarea id="promptInput" spellcheck="false">Tôi là tư vấn viên bảo hiểm. Hãy giúp tôi trả lời khách hàng về quyền lợi bảo hiểm sức khỏe, nhưng đừng cam kết chắc chắn được bồi thường.</textarea>
+            </label>
+
+            <div class="button-row">
+              <button class="button primary" id="inspectButton" type="button">Inspect</button>
+              <button class="button secondary" id="sampleAttackButton" type="button">Mẫu jailbreak</button>
+              <button class="button secondary" id="samplePiiButton" type="button">Mẫu PII</button>
+              <button class="button ghost" id="clearButton" type="button">Clear</button>
+            </div>
+
+            <div class="switch-row" aria-label="Cấu hình runtime">
+              <label class="switch">
+                <input id="maskPiiToggle" type="checkbox" checked />
+                <span>Mask PII</span>
+              </label>
+              <label class="switch">
+                <input id="blockHighRiskToggle" type="checkbox" checked />
+                <span>Block high risk</span>
+              </label>
+              <label class="switch">
+                <input id="autoRewriteToggle" type="checkbox" checked />
+                <span>Self-healing output</span>
+              </label>
+              <label class="switch">
+                <input id="openaiModerationToggle" type="checkbox" />
+                <span>OpenAI Moderation</span>
+              </label>
+              <label class="switch">
+                <input id="presidioToggle" type="checkbox" />
+                <span>Presidio PII</span>
+              </label>
+              <label class="switch">
+                <input id="llamaGuardToggle" type="checkbox" />
+                <span>Llama Guard</span>
+              </label>
+              <label class="switch">
+                <input id="llmGuardToggle" type="checkbox" />
+                <span>LLM Guard</span>
+              </label>
+              <label class="switch">
+                <input id="detoxifyToggle" type="checkbox" />
+                <span>Detoxify</span>
+              </label>
+              <label class="switch">
+                <input id="perspectiveToggle" type="checkbox" />
+                <span>Perspective</span>
+              </label>
+            </div>
+          </section>
+
+          <section class="panel risk-panel">
+            <div class="panel-header compact">
+              <div>
+                <p class="eyebrow">Risk score</p>
+                <h2>Điểm nguy hiểm</h2>
+              </div>
+            </div>
+            <div class="risk-meter" id="riskMeter" style="--risk: 0">
+              <div>
+                <strong id="riskValue">0%</strong>
+                <span id="riskLabel">Safe</span>
+              </div>
+            </div>
+            <div class="risk-scale">
+              <span>0 Safe</span>
+              <span>35 Warn</span>
+              <span>70 Block</span>
+            </div>
+            <div class="risk-breakdown" id="riskBreakdown"></div>
+          </section>
+        </div>
+
+        <section class="results-grid" aria-label="Kết quả kiểm tra">
+          <article class="panel">
+            <div class="panel-header compact">
+              <div>
+                <p class="eyebrow">Input Guard</p>
+                <h2>Findings</h2>
+              </div>
+              <span class="count-pill" id="findingCount">0</span>
+            </div>
+            <div class="finding-list" id="findingList">
+              <div class="empty-state">Chưa có finding. Bấm Inspect để chạy guardrail.</div>
+            </div>
+          </article>
+
+          <article class="panel">
+            <div class="panel-header compact">
+              <div>
+                <p class="eyebrow">Sanitized prompt</p>
+                <h2>Dữ liệu sau kiểm soát</h2>
+              </div>
+            </div>
+            <pre class="code-block" id="sanitizedPrompt">Chưa chạy.</pre>
+          </article>
+
+          <article class="panel">
+            <div class="panel-header compact">
+              <div>
+                <p class="eyebrow">AI Core</p>
+                <h2>Raw model response</h2>
+              </div>
+              <span class="adapter-pill" id="adapterPill">OpenAIAdapter</span>
+            </div>
+            <pre class="code-block" id="rawResponse">Chưa chạy.</pre>
+          </article>
+
+          <article class="panel">
+            <div class="panel-header compact">
+              <div>
+                <p class="eyebrow">Output Guard</p>
+                <h2>Safe response</h2>
+              </div>
+              <span class="badge safe" id="outputBadge">Pending</span>
+            </div>
+            <pre class="code-block" id="safeResponse">Chưa chạy.</pre>
+          </article>
+        </section>
+
+        <section class="lower-grid">
+          <article class="panel policy-panel" id="policy">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">Policy engine</p>
+                <h2>Bộ luật trung tâm</h2>
+              </div>
+              <span class="badge warn">Vietnamese compliance</span>
+            </div>
+            <div class="policy-editor" id="policyEditor"></div>
+          </article>
+
+          <article class="panel audit-panel" id="logs">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">Audit logs</p>
+                <h2>Lịch sử kiểm tra</h2>
+              </div>
+              <button class="button ghost" id="seedLogsButton" type="button">Seed demo</button>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Time</th>
+                    <th>Model</th>
+                    <th>Risk</th>
+                    <th>Action</th>
+                    <th>Reason</th>
+                  </tr>
+                </thead>
+                <tbody id="auditTable">
+                  <tr>
+                    <td colspan="5" class="empty-cell">Chưa có log.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </article>
+        </section>
+      </main>
+    </div>
+
+    <script src="src/app.js"></script>
+  </body>
+</html>

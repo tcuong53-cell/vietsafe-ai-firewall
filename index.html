@@ -21,6 +21,7 @@
           <a class="nav-item is-active" href="#inspector">Inspector</a>
           <a class="nav-item" href="#policy">Policy</a>
           <a class="nav-item" href="#logs">Audit Logs</a>
+          <a class="nav-item" href="#ipguard">IP Guard</a>
           <a class="nav-item" href="#gateway">Gateway</a>
         </nav>
 
@@ -290,6 +291,31 @@
                   <tr>
                     <td colspan="5" class="empty-cell">Chưa có log.</td>
                   </tr>
+                </tbody>
+              </table>
+            </div>
+          </article>
+
+          <article class="panel ip-guard-panel" id="ipguard">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">IP Guard</p>
+                <h2>Danh sách IP bị chặn</h2>
+              </div>
+              <button class="button ghost" id="refreshIpList" type="button">Refresh</button>
+            </div>
+            <div class="ip-form">
+              <input id="blockIpInput" type="text" placeholder="Nhập IP cần chặn (vd: 192.168.1.100)" />
+              <input id="blockIpReason" type="text" placeholder="Lý do" />
+              <button class="button primary" id="blockIpButton" type="button">Chặn IP</button>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>IP</th><th>Lý do</th><th>Thời gian</th><th>Thao tác</th></tr>
+                </thead>
+                <tbody id="ipGuardTable">
+                  <tr><td colspan="4" class="empty-cell">Chưa có IP bị chặn.</td></tr>
                 </tbody>
               </table>
             </div>

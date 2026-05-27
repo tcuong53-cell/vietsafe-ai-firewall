@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 from .config import Settings, get_settings
 from .database import Base, SessionLocal, engine, get_db
 from .models import APIKey, AuditLog
+from .ip_guard import ip_guard
 from .rate_limit import rate_limited_principal
 from .schemas import APIKeyCreate, APIKeyCreated, AuditLogItem, InspectRequest, InspectResponse, TenantPolicyUpdate
 from .security import Principal, create_api_key_secret, hash_api_key, require_scope
@@ -22,6 +23,18 @@ from .services.inspection import inspect_gateway, load_policy, summarize_reasons
 
 settings = get_settings()
 app = FastAPI(title=settings.app_name, version="0.2.0")
+
+
+@app.middleware("http")
+async def ip_guard_middleware(request: Request, call_next):
+    client_ip = request.client.host if request.client else "unknown"
+    blocked, reason = ip_guard.is_blocked(client_ip)
+    if blocked:
+        from fastapi.responses import JSONResponse
+        return JSONResponse(status_code=403, content={"detail": f"IP blocked: {reason}"})
+    response = await call_next(request)
+    return response
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -156,6 +169,27 @@ def metrics(
     )
     avg_risk = db.scalar(select(func.avg(AuditLog.risk)).where(AuditLog.tenant_id == principal.tenant.id)) or 0
     return {"total": total, "blocked": blocked, "average_risk": round(float(avg_risk), 2)}
+
+
+@app.get(f"{settings.api_prefix}/blocked-ips")
+def list_blocked_ips(principal: Principal = Depends(require_scope("policy:read"))):
+    return ip_guard.list_blocked()
+
+
+@app.post(f"{settings.api_prefix}/blocked-ips")
+def manage_blocked_ip(
+    payload: dict,
+    principal: Principal = Depends(require_scope("policy:write")),
+):
+    action = payload.get("action", "block")
+    ip = payload.get("ip", "")
+    if not ip:
+        raise HTTPException(status_code=400, detail="IP required")
+    if action == "unblock":
+        ip_guard.unblock_ip(ip)
+        return {"status": "unblocked", "ip": ip}
+    ip_guard.block_ip(ip, payload.get("reason", "Manual block via API"))
+    return {"status": "blocked", "ip": ip}
 
 
 ROOT_DIR = Path(__file__).resolve().parents[2]

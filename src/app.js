@@ -1035,6 +1035,64 @@ function exportLogs() {
   URL.revokeObjectURL(url);
 }
 
+async function fetchBlockedIps() {
+  try {
+    const reachable = await isBackendReachable();
+    if (!reachable) {
+      document.querySelector('#ipGuardTable').innerHTML = '<tr><td colspan="4" class="empty-cell">Backend không khả dụng.</td></tr>';
+      return;
+    }
+    const response = await fetch(`${backendBaseUrl()}/api/v1/blocked-ips`, {
+      headers: { 'X-API-Key': getGatewayApiKey() }
+    });
+    if (!response.ok) throw new Error('Failed');
+    const ips = await response.json();
+    renderBlockedIps(ips);
+  } catch (e) {
+    document.querySelector('#ipGuardTable').innerHTML = '<tr><td colspan="4" class="empty-cell">Lỗi tải danh sách.</td></tr>';
+  }
+}
+
+function renderBlockedIps(ips) {
+  const tbody = document.querySelector('#ipGuardTable');
+  if (!ips.length) {
+    tbody.innerHTML = '<tr><td colspan="4" class="empty-cell">Chưa có IP bị chặn.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = ips.map(ip => `
+    <tr>
+      <td>${escapeHtml(ip.ip)}</td>
+      <td>${escapeHtml(ip.reason)}</td>
+      <td>${new Date(ip.blocked_at * 1000).toLocaleString('vi-VN')}</td>
+      <td><button class="button ghost unblock-btn" data-ip="${escapeHtml(ip.ip)}" type="button">Gỡ chặn</button></td>
+    </tr>
+  `).join('');
+  tbody.querySelectorAll('.unblock-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      await fetch(`${backendBaseUrl()}/api/v1/blocked-ips`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-API-Key': getGatewayApiKey() },
+        body: JSON.stringify({ action: 'unblock', ip: btn.dataset.ip })
+      });
+      fetchBlockedIps();
+    });
+  });
+}
+
+async function blockIp() {
+  const ip = document.querySelector('#blockIpInput')?.value?.trim();
+  const reason = document.querySelector('#blockIpReason')?.value?.trim() || 'Manual block';
+  if (!ip) return;
+  await fetch(`${backendBaseUrl()}/api/v1/blocked-ips`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-API-Key': getGatewayApiKey() },
+    body: JSON.stringify({ action: 'block', ip, reason })
+  });
+  document.querySelector('#blockIpInput').value = '';
+  document.querySelector('#blockIpReason').value = '';
+  fetchBlockedIps();
+}
+
 function bindEvents() {
   elements.inspectButton.addEventListener("click", inspectPrompt);
   elements.runButton.addEventListener("click", inspectPrompt);
@@ -1048,6 +1106,8 @@ function bindEvents() {
       inspectPrompt();
     }
   });
+  document.querySelector('#refreshIpList')?.addEventListener('click', fetchBlockedIps);
+  document.querySelector('#blockIpButton')?.addEventListener('click', blockIp);
 }
 
 renderPolicyEditor();
@@ -1056,3 +1116,4 @@ renderStats();
 renderRisk(0, {});
 setGatewayStatus("client");
 bindEvents();
+fetchBlockedIps();

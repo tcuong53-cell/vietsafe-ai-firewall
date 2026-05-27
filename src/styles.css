@@ -814,3 +814,25 @@ td {
     width: min(220px, 100%);
   }
 }
+
+.ip-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.ip-form input {
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface-strong);
+  color: var(--ink);
+  font-size: 13px;
+}
+
+.unblock-btn {
+  padding: 4px 10px !important;
+  min-height: 32px !important;
+  font-size: 12px !important;
+}

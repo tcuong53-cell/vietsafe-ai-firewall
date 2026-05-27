@@ -144,11 +144,16 @@ async def inspect_gateway(
         {
             "tenant_id": tenant.id,
             "user_id": request.user_id,
+            "role": request.role,
             "model": adapter.name,
             "risk": audit.risk,
             "action": audit.action,
             "latency_ms": latency_ms,
             "audit_id": audit.id,
+            "prompt": request.prompt,
+            "sanitized_prompt": sanitized,
+            "raw_response": raw_response,
+            "response": output.safe_response,
         }
     )
 

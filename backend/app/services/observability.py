@@ -33,16 +33,30 @@ class ObservabilityClient:
             return
         try:
             trace = self._client.trace(
+                id=str(payload.get("audit_id")) if payload.get("audit_id") else None,
                 name="ai_firewall_inspection",
                 user_id=payload.get("user_id"),
+                input=payload.get("prompt"),
+                output=payload.get("response"),
                 metadata={
                     "tenant_id": payload.get("tenant_id"),
+                    "role": payload.get("role"),
                     "risk": payload.get("risk"),
                     "action": payload.get("action"),
                     "model": payload.get("model"),
                     "latency_ms": payload.get("latency_ms"),
                 },
             )
+            # Add generation span for LLM call if not blocked
+            if payload.get("action") != "block" and payload.get("model") != "mock":
+                trace.generation(
+                    name=f"llm_generation_{payload.get('model')}",
+                    model=payload.get("model"),
+                    input=payload.get("sanitized_prompt"),
+                    output=payload.get("raw_response"),
+                    metadata={"role": payload.get("role")},
+                )
+            
             trace.score(name="risk", value=payload.get("risk", 0) / 100)
         except Exception as exc:
             logger.warning("Langfuse trace failed: %s", exc)
